@@ -233,25 +233,36 @@ class NDArray:
         Reshape the matrix without copying memory.  This will return a matrix
         that corresponds to a reshaped array but points to the same memory as
         the original array.
+
         Raises:
             ValueError if product of current shape is not equal to the product
             of the new shape, or if the matrix is not compact.
+
         Args:
             new_shape (tuple): new shape of the array
+
         Returns:
-            NDArray : reshaped array; this will point to the same memory as the original NDArray.
+            NDArray : reshaped array; this will point to thep
         """
 
         ### BEGIN YOUR SOLUTION
-        if prod(self.shape) != prod(new_shape) or not self.is_compact():
-            raise ValueError()
-        return self.as_strided(new_shape, self.compact_strides(new_shape))
-
+        if prod(new_shape) != prod(self.shape):
+            if -1 in new_shape and new_shape.count(-1) == 1:
+                val = int(prod(self.shape) / prod(new_shape) * -1)
+                tmp_shape = []
+                for dim in new_shape:
+                    tmp_shape.append(dim if dim != -1 else val)
+                new_shape = tuple(tmp_shape)
+            else:
+                raise ValueError()
+        _shape = new_shape
+        _strides = self.compact_strides(_shape)
+        return self.as_strided(_shape, _strides)
         ### END YOUR SOLUTION
 
     def permute(self, new_axes):
         """
-        Permute order of the dimensions.  new_axes describes a permutation of the
+        Permute order of the dimensions.  new_axes describes a permuation of the
         existing axes, so e.g.:
           - If we have an array with dimension "BHWC" then .permute((0,3,1,2))
             would convert this to "BCHW" order.
@@ -259,9 +270,11 @@ class NDArray:
         Like reshape, this operation should not copy memory, but achieves the
         permuting by just adjusting the shape/strides of the array.  That is,
         it returns a new array that has the dimensions permuted as desired, but
-        which points to the same memory as the original array.
+        which points to the same memroy as the original array.
+
         Args:
-            new_axes (tuple): permutation order of the dimensions
+            new_axes (tuple): permuation order of the dimensions
+
         Returns:
             NDarray : new NDArray object with permuted dimensions, pointing
             to the same memory as the original NDArray (i.e., just shape and
@@ -269,13 +282,14 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
-        if not new_axes:
-          new_axes = tuple(range(len(self.shape)))
-        # print(new_axes)
-        shape = tuple([self.shape[x] for x in new_axes])
-        strides = tuple([self.strides[x] for x in new_axes])
-        return self.as_strided(shape, strides)
-
+        _shape = []
+        _strides = []
+        for ax in new_axes:
+            _shape.append(self.shape[ax])
+            _strides.append(self.strides[ax])
+        _shape = tuple(_shape)
+        _strides = tuple(_strides)
+        return self.as_strided(_shape, _strides)
         ### END YOUR SOLUTION
 
     def broadcast_to(self, new_shape):
@@ -285,27 +299,29 @@ class NDArray:
         the size = 1 (which can then be broadcast to any size).  As with the
         previous calls, this will not copy memory, and just achieves
         broadcasting by manipulating the strides.
+
         Raises:
             assertion error if new_shape[i] != shape[i] for all i where
             shape[i] != 1
+
         Args:
             new_shape (tuple): shape to broadcast to
+
         Returns:
             NDArray: the new NDArray object with the new broadcast shape; should
             point to the same memory as the original array.
         """
-
         ### BEGIN YOUR SOLUTION
-        for i in range(len(self.shape)):
-            if self.shape[i] != 1:
-                assert new_shape[i] == self.shape[i]
-        strides = []
-        for i, s in enumerate(new_shape):
-            if self.shape[i] != 1:
-                strides += self.strides[i],
-            else:
-                strides += 0,
-        return self.as_strided(new_shape, tuple(strides))
+        if (len(new_shape) == len(self.shape)):
+            _strides = []
+            for idx, shape in enumerate(new_shape):
+                stride = self.strides[idx] if self.shape[idx] != 1 else 0
+                _strides.append(stride)
+            _strides = tuple(_strides)
+        else:
+            _strides = [0] * (len(new_shape) - len(self.shape)) + list(self.strides)
+            _strides = tuple(_strides)
+        return self.as_strided(new_shape, _strides)
         ### END YOUR SOLUTION
 
     ### Get and set elements
@@ -361,8 +377,11 @@ class NDArray:
         """
 
         # handle singleton as tuple, everything as slices
-        if not isinstance(idxs, tuple):
+        if isinstance(idxs, int):
             idxs = (idxs,)
+        idxs = list(idxs)
+        while len(idxs) < self.ndim:
+            idxs.append(slice(None, None, None))
         idxs = tuple(
             [
                 self.process_slice(s, i) if isinstance(s, slice) else slice(s, s + 1, 1)
@@ -372,17 +391,20 @@ class NDArray:
         assert len(idxs) == self.ndim, "Need indexes equal to number of dimensions"
 
         ### BEGIN YOUR SOLUTION
-        shape = []
-        strides = []
-        offset = 0
-        for i, s in enumerate(idxs):
-            start, stop, step = s.start, s.stop, s.step
-            shape += int((stop-start+step-1)/step),
-            strides += self.strides[i]*step,
-            offset += start*self.strides[i]
-        shape = tuple(shape)
-        strides = tuple(strides)
-        return NDArray.make(shape, strides, self.device, self._handle, offset)
+        _shape = []
+        _strides = []
+        _offset = 0
+        for i, idx in enumerate(idxs):
+            start, stop, step = idx.start, idx.stop, idx.step
+            if stop > self.shape[i]: stop = self.shape[i]
+            _offset += (start * self.strides[i])
+            tmp_dim = math.ceil((stop - start) / step)
+            if tmp_dim > 1:
+                _shape.append(tmp_dim)
+                _strides.append(self.strides[i] * step)
+        return NDArray.make(
+            tuple(_shape), strides=tuple(_strides), device=self.device, handle=self._handle, offset=_offset
+        )
         ### END YOUR SOLUTION
 
     def __setitem__(self, idxs, other):
@@ -390,7 +412,6 @@ class NDArray:
         as __getitem__()."""
         view = self.__getitem__(idxs)
         if isinstance(other, NDArray):
-            print(view.shape, other.shape)
             assert prod(view.shape) == prod(other.shape)
             self.device.ewise_setitem(
                 other.compact()._handle,
@@ -558,8 +579,8 @@ class NDArray:
 
         if axis is None:
             view = self.compact().reshape((1,) * (self.ndim - 1) + (prod(self.shape),))
-            out = NDArray.make((1,) * (self.ndim if keepdims else 1), device=self.device)
-
+            #out = NDArray.make((1,) * self.ndim, device=self.device)
+            out = NDArray.make((1,), device=self.device)
 
         else:
             if isinstance(axis, (tuple, list)):
@@ -594,7 +615,16 @@ class NDArray:
         Note: compact() before returning.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        strides = list(self.strides)
+        if isinstance(axes, int):
+            axes = [axes]
+        offset = 0
+        for ax in axes:
+            strides[ax] = -strides[ax]
+            offset += (self.shape[ax] - 1) * self.strides[ax]
+        return NDArray.make(
+            self.shape, strides=tuple(strides), device=self.device, handle=self._handle, offset=offset
+        ).compact()
         ### END YOUR SOLUTION
 
 
@@ -605,7 +635,15 @@ class NDArray:
         axes = ( (0, 0), (1, 1), (0, 0)) pads the middle axis with a 0 on the left and right side.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        shape = list(self.shape)
+        for idx, ax in enumerate(axes):
+            shape[idx] += sum(ax)
+        new_array = NDArray(np.zeros(shape), device=self.device)
+        slices = tuple(
+            [slice(i, shape[idx] - j) for idx, (i, j) in enumerate(axes)]
+        )
+        new_array[slices] = self
+        return new_array
         ### END YOUR SOLUTION
 
 
