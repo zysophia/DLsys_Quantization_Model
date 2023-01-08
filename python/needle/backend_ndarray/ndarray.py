@@ -518,6 +518,11 @@ class NDArray:
         self.device.ewise_tanh(self.compact()._handle, out._handle)
         return out
 
+    def sqrt(self):
+        out = NDArray.make(self.shape, device=self.device)
+        self.device.ewise_sqrt(self.compact()._handle, out._handle)
+        return out
+
     ### Matrix multiplication
     def __matmul__(self, other):
         """Matrix multplication of two arrays.  This requires that both arrays
@@ -608,6 +613,12 @@ class NDArray:
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
+    def diag(self):
+        assert self.ndim == 1, "Only support 1-dimensional tensor now"
+        n = prod(self.shape)
+        out = NDArray.make((n, n), device=self.device)
+        self.device.diag(self.compact()._handle, out._handle, n)
+        return out
 
     def flip(self, axes):
         """
@@ -627,7 +638,6 @@ class NDArray:
         ).compact()
         ### END YOUR SOLUTION
 
-
     def pad(self, axes):
         """
         Pad this ndarray by zeros by the specified amount in `axes`,
@@ -645,7 +655,6 @@ class NDArray:
         new_array[slices] = self
         return new_array
         ### END YOUR SOLUTION
-
 
 
 def array(a, dtype="float32", device=None):
@@ -687,6 +696,11 @@ def exp(a):
 
 def tanh(a):
     return a.tanh()
+
+
+def sqrt(a):
+    return a.sqrt()
+
 
 def flip(a, axes):
     return a.flip(axes)

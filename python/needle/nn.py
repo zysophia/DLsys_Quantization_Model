@@ -291,7 +291,7 @@ class Residual(Module):
         ### END YOUR SOLUTION
 
 
-class ConvBN(Module):
+class ConvBatchNormReLU(Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True, device=None, dtype="float32"):
         super().__init__()
         self.conv = Conv(in_channels, out_channels, kernel_size, stride, bias, device, dtype)
