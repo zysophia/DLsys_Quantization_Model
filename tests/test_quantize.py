@@ -26,12 +26,12 @@ if __name__=="__main__":
   # print(len(model.named_parameters()), len(model.parameters()))
   # print([x.sum() for x in model.parameters()])
   model1 = ResNet9(device=ndl.cpu())
-  print('model1 params ', len(model1.named_parameters()), model1.parameters()[0])
+  print('model1 params ', len(model1.named_parameters()), model1.parameters()[0].sum())
   save_model(model1, './data/resnet9_model.pkl')
   model2 = ResNet9(device=ndl.cpu())
-  print('model2 params ', len(model1.named_parameters()), model1.parameters()[0])
+  print('model2 params ', len(model1.named_parameters()), model1.parameters()[0].sum())
   model2 = load_model(model2, './data/resnet9_model.pkl')
-  print('model2 load params ', len(model1.named_parameters()), model1.parameters()[0])
+  print('model2 load params ', len(model1.named_parameters()), model1.parameters()[0].sum())
 
 
 

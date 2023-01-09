@@ -5,13 +5,15 @@ import needle.nn as nn
 from needle.autograd import Tensor
 from collections import Mapping
 import pickle
+import numpy as np
 
 
 def save_model(model: nn.Module, file_path: str):
   named_paras = model.named_parameters()
-  print(named_paras)
+  for k, v in named_paras.items():
+    named_paras[k] = v.numpy()
   with open (file_path, 'wb') as f:
-    pickle.dump(named_paras, f)
+    pickle.dump(named_paras, f, pickle.HIGHEST_PROTOCOL)
   f.close()
 
 
@@ -19,6 +21,8 @@ def load_model(model: nn.Module, file_path: str):
   with open (file_path, 'rb') as f:
     named_paras = pickle.load(f)
   f.close()
+  for k, v in named_paras.items():
+    named_paras[k] = nn.Parameter(v)
   return load_named_params(model, named_paras)
 
 
