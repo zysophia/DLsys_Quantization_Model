@@ -706,7 +706,7 @@ class Conv(TensorOp):
         ### END YOUR SOLUTION
 
 
-def conv(a, b, stride=1, padding=1):
+def conv(a, b, stride=1, padding=0):
     return Conv(stride, padding)(a, b)
 
 

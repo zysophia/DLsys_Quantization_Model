@@ -174,6 +174,9 @@ class Sequential(Module):
         return x
         ### END YOUR SOLUTION
 
+    def __getitem__(self, idx):
+        return self.modules[idx]
+
 
 class SoftmaxLoss(Module):
     def forward(self, logits: Tensor, y: Tensor):
@@ -362,6 +365,27 @@ class Conv(Module):
         ) # NHWC -> NCWH -> NCHW
         return x
         ### END YOUR SOLUTION
+
+
+class FuseConv(Conv):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.act = ReLU()
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = ops.transpose(
+            ops.transpose(x),
+            (1, 3)
+        ) # NCHW -> NCWH -> NHWC
+        x = ops.conv(x, self.weight, stride=self.stride, padding=self.padding)
+        if self.bias is not None:
+            x = x + ops.broadcast_to(self.bias, x.shape)
+        x = ops.transpose(
+            ops.transpose(x, (1,3))
+        ) # NHWC -> NCWH -> NCHW
+        x = self.act(x)
+        return x
 
 
 class RNNCell(Module):

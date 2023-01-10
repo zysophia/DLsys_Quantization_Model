@@ -246,15 +246,14 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
-        if prod(new_shape) != prod(self.shape):
-            if -1 in new_shape and new_shape.count(-1) == 1:
-                val = int(prod(self.shape) / prod(new_shape) * -1)
-                tmp_shape = []
-                for dim in new_shape:
-                    tmp_shape.append(dim if dim != -1 else val)
-                new_shape = tuple(tmp_shape)
-            else:
-                raise ValueError()
+        if new_shape == -1:
+            new_shape = (prod(self.shape),)
+        elif -1 in new_shape:
+            assert new_shape.count(-1) == 1
+            val = int(prod(self.shape) / prod(new_shape) * -1)
+            idx = list(new_shape).index(-1)
+            new_shape = list(new_shape)
+            new_shape[idx] = val
         _shape = new_shape
         _strides = self.compact_strides(_shape)
         return self.as_strided(_shape, _strides)

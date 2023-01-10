@@ -7,7 +7,7 @@ def _run_fuse_conv_bn_relu(module):
     conv = module.conv
     bn = module.bn
 
-    fused = nn.Conv(
+    fused = nn.FuseConv(
         conv.in_channels,
         conv.out_channels,
         conv.kernel_size,
@@ -17,31 +17,46 @@ def _run_fuse_conv_bn_relu(module):
         conv.dtype
     )
 
-    w_conv = conv.weight.detach().reshape((conv.out_channels, -1))
+    w_conv = conv.weight.detach().\
+        transpose((0,3)).transpose((1,2)).transpose((0,1)).\
+            reshape((conv.out_channels, -1))
     w_bn = ndl.diag(bn.weight / ndl.sqrt(bn.eps + bn.running_var))
 
-    fused.weight.cached_data = ndl.matmul(w_bn, w_conv).reshape(fused.weight.shape)
+    fused_weight = ndl.matmul(w_bn, w_conv)
+    tmp_shape = [
+        fused.weight.shape[3],
+        fused.weight.shape[2],
+        fused.weight.shape[0],
+        fused.weight.shape[1],
+    ]
+    fused_weight = fused_weight.reshape(tmp_shape)
+    fused.weight.cached_data = fused_weight.realize_cached_data().permute((2,3,1,0))
 
     if conv.bias is not None:
         b_conv = conv.bias
     else:
-        b_conv = ops.zeros(conv.weight.shape[0])
-    b_conv = ndl.matmul(w_bn, b_conv.reshape((-1, 1))).reshape((-1))
+        b_conv = ops.zeros(conv.weight.shape[3], device=ndl.cpu())
+    b_conv = ndl.matmul(w_bn, b_conv.reshape((-1, 1))).reshape(-1)
     b_bn = bn.bias - bn.weight * bn.running_mean / ndl.sqrt(bn.running_var + bn.eps)
-    fused.bias.realized_cache_data = b_conv + b_bn
+    fused_b = b_conv + b_bn
+    fused.bias.cached_data = fused_b.realize_cached_data()
 
     return fused
+
 
 def _fuse_conv_bn_relu(model):
     """Fuse Convolution BatchNorm and ReLU helper"""
     if not isinstance(model, nn.Module):
-        return
+        return model
+
+    if isinstance(model, nn.ConvBatchNormReLU):
+        model = _run_fuse_conv_bn_relu(model)
+        return model
 
     keys = list(model.__dict__.keys())
     for name in keys:
         if isinstance(getattr(model, name), nn.ConvBatchNormReLU):
             setattr(model, name, _run_fuse_conv_bn_relu(getattr(model, name)))
-            # delattr(model, name)
         elif isinstance(getattr(model, name), (list, tuple)):
             new_modules = []
             for sub_model in getattr(model, name):
@@ -50,11 +65,10 @@ def _fuse_conv_bn_relu(model):
                 new_modules.append(sub_model)
             setattr(model, name, tuple(new_modules))
         elif isinstance(getattr(model, name), nn.Module):
-            _fuse_conv_bn_relu(getattr(model, name))
+            setattr(model, name, _fuse_conv_bn_relu(getattr(model, name)))
+    return model
 
 
 def fuse_conv_bn_relu(model):
     """Fuse Convolution BatchNorm and ReLU api"""
-    _fuse_conv_bn_relu(model)
-
-    return model
+    return _fuse_conv_bn_relu(model)
