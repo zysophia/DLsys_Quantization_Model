@@ -219,7 +219,7 @@ void ScalarAdd(const AlignedArray& a, scalar_t val, AlignedArray* out) {
 
 /// BEGIN YOUR SOLUTION
 enum class _EwiseOp {
-  MUL, DIV, MAX, EQ, GE, LOG, EXP, TANH
+  MUL, DIV, MAX, EQ, GE, LOG, EXP, TANH, SQRT
 };
 enum class _ScalarOp {
   MUL, DIV, POWER, MAX, EQ, GE
@@ -255,7 +255,10 @@ void EwiseFunc(const AlignedArray& a, AlignedArray* out) {
       out->ptr[i] = std::exp(a.ptr[i]);
     }
     if constexpr (op == _EwiseOp::TANH) {
-    out->ptr[i] = std::tanh(a.ptr[i]);
+      out->ptr[i] = std::tanh(a.ptr[i]);
+    }
+    if constexpr (op == _EwiseOp::SQRT) {
+      out->ptr[i] = std::sqrt(a.ptr[i]);
     }
   }
 }
@@ -461,6 +464,23 @@ void ReduceSum(const AlignedArray& a, AlignedArray* out, size_t reduce_size) {
   /// END YOUR SOLUTION
 }
 
+void Diag(const AlignedArray& a, AlignedArray* out, size_t dim) {
+  /**
+   * Make a diag tensor
+  **/
+  size_t n = a.size;
+  size_t idx;
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = 0; j < n; ++j) {
+      idx = i * n + j;
+      if (i == j)
+        out->ptr[idx] = a.ptr[i];
+      else
+        out->ptr[idx] = 0.f;
+    }
+  }
+}
+
 }  // namespace cpu
 }  // namespace needle
 
@@ -515,10 +535,12 @@ PYBIND11_MODULE(ndarray_backend_cpu, m) {
   m.def("ewise_log", EwiseFunc<_EwiseOp::LOG>);
   m.def("ewise_exp", EwiseFunc<_EwiseOp::EXP>);
   m.def("ewise_tanh", EwiseFunc<_EwiseOp::TANH>);
+  m.def("ewise_sqrt", EwiseFunc<_EwiseOp::SQRT>);
 
   m.def("matmul", Matmul);
   m.def("matmul_tiled", MatmulTiled);
 
   m.def("reduce_max", ReduceMax);
   m.def("reduce_sum", ReduceSum);
+  m.def("diag", Diag);
 }

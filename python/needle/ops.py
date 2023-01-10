@@ -17,6 +17,18 @@ def prod(x):
     return reduce(operator.mul, x, 1)
 
 
+class Diagonal(TensorOp):
+
+    def compute(self, a):
+        return a.diag()
+    
+    def gradient(self, out_grad, node):
+        raise NotImplementedError()
+
+def diag(x):
+    return Diagonal()(x)
+
+
 class MakeTensorTuple(TensorTupleOp):
     def compute(self, *args) -> tuple:
         return tuple(args)
@@ -167,6 +179,21 @@ class EWiseDiv(TensorOp):
         return (out_grad / rhs,
                 negate(out_grad) * lhs / (power_scalar(rhs, 2)))
         ### END YOUR SOLUTION
+
+
+class EWiseSqrt(TensorOp):
+    """Op to element-wise sqrt function."""
+
+    def compute(self, a):
+        return a.sqrt()
+
+    def gradient(self, out_grad, node):
+        inp = node.inputs[0]
+        out_grad = out_grad * 0.5 * inp ** -0.5
+        return (out_grad,)
+
+def sqrt(a):
+    return EWiseSqrt()(a)
 
 
 def divide(a, b):
@@ -679,7 +706,7 @@ class Conv(TensorOp):
         ### END YOUR SOLUTION
 
 
-def conv(a, b, stride=1, padding=1):
+def conv(a, b, stride=1, padding=0):
     return Conv(stride, padding)(a, b)
 
 

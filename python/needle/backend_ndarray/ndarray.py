@@ -246,15 +246,14 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
-        if prod(new_shape) != prod(self.shape):
-            if -1 in new_shape and new_shape.count(-1) == 1:
-                val = int(prod(self.shape) / prod(new_shape) * -1)
-                tmp_shape = []
-                for dim in new_shape:
-                    tmp_shape.append(dim if dim != -1 else val)
-                new_shape = tuple(tmp_shape)
-            else:
-                raise ValueError()
+        if new_shape == -1:
+            new_shape = (prod(self.shape),)
+        elif -1 in new_shape:
+            assert new_shape.count(-1) == 1
+            val = int(prod(self.shape) / prod(new_shape) * -1)
+            idx = list(new_shape).index(-1)
+            new_shape = list(new_shape)
+            new_shape[idx] = val
         _shape = new_shape
         _strides = self.compact_strides(_shape)
         return self.as_strided(_shape, _strides)
@@ -518,6 +517,11 @@ class NDArray:
         self.device.ewise_tanh(self.compact()._handle, out._handle)
         return out
 
+    def sqrt(self):
+        out = NDArray.make(self.shape, device=self.device)
+        self.device.ewise_sqrt(self.compact()._handle, out._handle)
+        return out
+
     ### Matrix multiplication
     def __matmul__(self, other):
         """Matrix multplication of two arrays.  This requires that both arrays
@@ -608,6 +612,12 @@ class NDArray:
         self.device.reduce_max(view.compact()._handle, out._handle, view.shape[-1])
         return out
 
+    def diag(self):
+        assert self.ndim == 1, "Only support 1-dimensional tensor now"
+        n = prod(self.shape)
+        out = NDArray.make((n, n), device=self.device)
+        self.device.diag(self.compact()._handle, out._handle, n)
+        return out
 
     def flip(self, axes):
         """
@@ -627,7 +637,6 @@ class NDArray:
         ).compact()
         ### END YOUR SOLUTION
 
-
     def pad(self, axes):
         """
         Pad this ndarray by zeros by the specified amount in `axes`,
@@ -645,7 +654,6 @@ class NDArray:
         new_array[slices] = self
         return new_array
         ### END YOUR SOLUTION
-
 
 
 def array(a, dtype="float32", device=None):
@@ -687,6 +695,11 @@ def exp(a):
 
 def tanh(a):
     return a.tanh()
+
+
+def sqrt(a):
+    return a.sqrt()
+
 
 def flip(a, axes):
     return a.flip(axes)

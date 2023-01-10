@@ -11,20 +11,20 @@ class ResNet9(ndl.nn.Module):
     def __init__(self, device=None, dtype="float32"):
         super().__init__()
         ### BEGIN YOUR SOLUTION ###
-        self.block1 = nn.ConvBN(3, 16, 7, 4, device=device, dtype=dtype)
-        self.block2 = nn.ConvBN(16, 32, 3, 2, device=device, dtype=dtype)
+        self.block1 = nn.ConvBatchNormReLU(3, 16, 7, 4, device=device, dtype=dtype)
+        self.block2 = nn.ConvBatchNormReLU(16, 32, 3, 2, device=device, dtype=dtype)
         self.res1 = nn.Residual(
             nn.Sequential(
-                nn.ConvBN(32, 32, 3, 1, device=device, dtype=dtype),
-                nn.ConvBN(32, 32, 3, 1, device=device, dtype=dtype)
+                nn.ConvBatchNormReLU(32, 32, 3, 1, device=device, dtype=dtype),
+                nn.ConvBatchNormReLU(32, 32, 3, 1, device=device, dtype=dtype)
             )
         )
-        self.block3 = nn.ConvBN(32, 64, 3, 2, device=device, dtype=dtype)
-        self.block4 = nn.ConvBN(64, 128, 3, 2, device=device, dtype=dtype)
+        self.block3 = nn.ConvBatchNormReLU(32, 64, 3, 2, device=device, dtype=dtype)
+        self.block4 = nn.ConvBatchNormReLU(64, 128, 3, 2, device=device, dtype=dtype)
         self.res2 = nn.Residual(
             nn.Sequential(
-                nn.ConvBN(128, 128, 3, 1, device=device, dtype=dtype),
-                nn.ConvBN(128, 128, 3, 1, device=device, dtype=dtype),
+                nn.ConvBatchNormReLU(128, 128, 3, 1, device=device, dtype=dtype),
+                nn.ConvBatchNormReLU(128, 128, 3, 1, device=device, dtype=dtype),
             )
         )
         self.flatten = nn.Flatten()

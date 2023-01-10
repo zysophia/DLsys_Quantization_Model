@@ -461,6 +461,22 @@ void ReduceSum(const CudaArray& a, CudaArray* out, size_t reduce_size) {
   /// END YOUR SOLUTION
 }
 
+__global__ void _DiagKernel(const scalar_t* a, scalar_t* out, size_t n) {
+  size_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+  size_t idx = gid * n + gid;
+  if (gid < n)
+    out[idx] = a[gid];
+}
+
+void Diag(const CudaArray& a, CudaArray* out, size_t dim) {
+  /**
+   * Make a diag tensor
+  **/
+  size_t n = a.size;
+  CudaDims d = CudaOneDim(n);
+  _DiagKernel<<<d.grid, d.block>>>(a.ptr, out->ptr, dim);
+}
+
 }  // namespace cuda
 }  // namespace needle
 
@@ -530,4 +546,5 @@ PYBIND11_MODULE(ndarray_backend_cuda, m) {
 
   m.def("reduce_max", ReduceMax);
   m.def("reduce_sum", ReduceSum);
+  m.def("diag", Diag);
 }
