@@ -368,6 +368,7 @@ class Conv(Module):
 
 
 class FuseConv(Conv):
+    """Fuse activation with convolution"""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -386,6 +387,39 @@ class FuseConv(Conv):
         ) # NHWC -> NCWH -> NCHW
         x = self.act(x)
         return x
+
+
+class QConv(Module):
+
+    def __init__(self, quant_weight, scales, stride=1, bias=None, device=None):
+        super().__init__()
+        self.in_channels = quant_weight.shape[2]
+        self.out_channels = quant_weight.shape[3]
+        self.kernel_size = quant_weight.shape[0]
+        self.stride = stride
+        self.device = device
+        self.scales = scales
+
+        ### BEGIN YOUR SOLUTION
+        self.padding = self.kernel_size // 2
+        self.weight = Parameter(Tensor(quant_weight, device=self.device, dtype="int8"))
+        self.bias = bias if bias is not None else None
+        ### END YOUR SOLUTION
+
+    def forward(self, x: Tensor) -> Tensor:
+        ### BEGIN YOUR SOLUTION
+        x = ops.transpose(
+            ops.transpose(x),
+            (1, 3)
+        ) # NCHW -> NCWH -> NHWC
+        x = ops.conv(x, self.weight, stride=self.stride, padding=self.padding)
+        if self.bias is not None:
+            x = x + ops.broadcast_to(self.bias, x.shape)
+        x = ops.transpose(
+            ops.transpose(x, (1,3))
+        ) # NHWC -> NCWH -> NCHW
+        return x
+        ### END YOUR SOLUTION
 
 
 class RNNCell(Module):

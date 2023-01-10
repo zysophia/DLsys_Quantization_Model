@@ -1,7 +1,12 @@
 import os
+import sys
+sys.path.append('python')
 import argparse
 
-from utils import load_config, build_model, save_model
+import needle as ndl
+from apps.models import ResNet9
+from utils import save_model
+from tools import quant_model
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -20,18 +25,22 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
+    # args = parse_args()
     # configurations
-    config = load_config(args.config)
+    # config = load_config(args.config)
     # dataloader for inference
-    dataloader = build_dataloader(config.data)
+    # dataloader = build_dataloader(config.data)
     # build model
-    model = build_model(config.model)
+    # model = build_model(config.model)
+    model = ResNet9(ndl.cpu())
+    save_model(model, "checkpoints/resnet9.ndl")
 
     # quantize model
-    quant_model = quantize_model(model, args.fuse-conv-bn)
+    q_model = quant_model(model)
+    save_model(q_model, "checkpoints/resnet9-quant.ndl")
 
-    save_model(quant_model, args.out)
+    print("Original size: ", os.path.getsize("checkpoints/resnet9.ndl")/(1024*1024))
+    print("Quantize size: ", os.path.getsize("checkpoints/resnet9-quant.ndl")/(1024*1024))
 
 
 if __name__ == "__main__":
