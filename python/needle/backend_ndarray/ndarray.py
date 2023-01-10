@@ -96,7 +96,7 @@ class NDArray:
     this can be extended if desired.
     """
 
-    def __init__(self, other, device=None):
+    def __init__(self, other, device=None, dtype=None):
         """ Create by copying another NDArray, or from numpy """
         if isinstance(other, NDArray):
             # create a copy of existing NDArray
@@ -106,12 +106,12 @@ class NDArray:
         elif isinstance(other, np.ndarray):
             # create copy from numpy array
             device = device if device is not None else default_device()
-            array = self.make(other.shape, device=device)
+            array = self.make(other.shape, device=device, dtype=dtype)
             array.device.from_numpy(np.ascontiguousarray(other), array._handle)
             self._init(array)
         else:
             # see if we can create a numpy array from input
-            array = NDArray(np.array(other), device=device)
+            array = NDArray(np.array(other), device=device, dtype=dtype)
             self._init(array)
 
     def _init(self, other):
@@ -120,6 +120,7 @@ class NDArray:
         self._offset = other._offset
         self._device = other._device
         self._handle = other._handle
+        self._dtype = other._dtype
 
     @staticmethod
     def compact_strides(shape):
@@ -132,7 +133,7 @@ class NDArray:
         return tuple(res[::-1])
 
     @staticmethod
-    def make(shape, strides=None, device=None, handle=None, offset=0):
+    def make(shape, strides=None, device=None, dtype=None, handle=None, offset=0):
         """Create a new NDArray with the given properties.  This will allocation the
         memory if handle=None, otherwise it will use the handle of an existing
         array."""
@@ -141,8 +142,12 @@ class NDArray:
         array._strides = NDArray.compact_strides(shape) if strides is None else strides
         array._offset = offset
         array._device = device if device is not None else default_device()
+        array._dtype = dtype if dtype is not None else "float32"
         if handle is None:
+            # if array._dtype == "float32":
             array._handle = array.device.Array(prod(shape))
+            # elif array._dtype == "int8":
+            #     array._handle = array.device.QArray(prod(shape))
         else:
             array._handle = handle
         return array
@@ -162,8 +167,7 @@ class NDArray:
 
     @property
     def dtype(self):
-        # only support float32 for now
-        return "float32"
+        return self._dtype
 
     @property
     def ndim(self):
@@ -659,8 +663,8 @@ class NDArray:
 def array(a, dtype="float32", device=None):
     """ Convenience methods to match numpy a bit more closely."""
     dtype = "float32" if dtype is None else dtype
-    assert dtype == "float32"
-    return NDArray(a, device=device)
+    # assert dtype == "float32"
+    return NDArray(a, device=device, dtype=dtype)
 
 
 def empty(shape, dtype="float32", device=None):

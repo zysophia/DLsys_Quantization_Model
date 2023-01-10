@@ -3,7 +3,7 @@ from typing_extensions import ParamSpecKwargs
 import needle as ndl
 import needle.nn as nn
 from needle.autograd import Tensor
-from collections import Mapping
+from collections.abc import Mapping
 import pickle
 import numpy as np
 

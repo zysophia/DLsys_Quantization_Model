@@ -33,6 +33,18 @@ struct AlignedArray {
 };
 
 
+struct QAlignedArray {
+  QAlignedArray(const size_t size) {
+    int ret = posix_memalign((void**)&ptr, ALIGNMENT, size * ELEM_SIZE);
+    if (ret != 0) throw std::bad_alloc();
+    this->size = size;
+  }
+  ~QAlignedArray() { free(ptr); }
+  size_t ptr_as_int() {return (size_t)ptr; }
+  int8_t* ptr;
+  size_t size;
+};
+
 
 void Fill(AlignedArray* out, scalar_t val) {
   /**

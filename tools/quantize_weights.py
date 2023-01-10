@@ -22,7 +22,7 @@ def symmetric_quantize_weight(arr: np.ndarray) -> Tuple[np.ndarray, float]:
 def quantize_conv(x: nn.Conv) -> Tuple[np.ndarray, np.ndarray]:
     data = x.weight.realize_cached_data().numpy() # convert to numpy for simplicity
     channels = data.shape[3]
-    quantized_data = np.empty_like(data)
+    quantized_data = np.empty_like(data, dtype=np.int8)
     scales = np.empty(channels)
 
     for c in range(channels): # quantize by channel
