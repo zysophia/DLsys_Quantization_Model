@@ -24,7 +24,11 @@ def _quant_model(model):
             stride = getattr(model, name).stride
             device = getattr(model, name).device
             bias = getattr(model, name).bias
-            setattr(model, name, nn.QConv(quant_weight, scales, stride=stride, bias=bias, device=device))
+            setattr(
+                model,
+                name,
+                nn.QConv(quant_weight, scales, stride=stride, bias=bias, device=device),
+            )
         elif isinstance(getattr(model, name), (list, tuple)):
             new_modules = []
             for sub_model in getattr(model, name):
@@ -45,7 +49,7 @@ def _quant_model(model):
 def quant_model(model, fuse=False):
     if fuse:
         model = fuse_conv_bn_relu(model)
-    
+
     model = _quant_model(model)
 
     return model

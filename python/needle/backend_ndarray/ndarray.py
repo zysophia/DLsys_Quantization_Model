@@ -97,7 +97,7 @@ class NDArray:
     """
 
     def __init__(self, other, device=None, dtype=None):
-        """ Create by copying another NDArray, or from numpy """
+        """Create by copying another NDArray, or from numpy"""
         if isinstance(other, NDArray):
             # create a copy of existing NDArray
             if device is None:
@@ -124,7 +124,7 @@ class NDArray:
 
     @staticmethod
     def compact_strides(shape):
-        """ Utility function to compute compact strides """
+        """Utility function to compute compact strides"""
         stride = 1
         res = []
         for i in range(1, len(shape) + 1):
@@ -171,7 +171,7 @@ class NDArray:
 
     @property
     def ndim(self):
-        """ Return number of dimensions. """
+        """Return number of dimensions."""
         return len(self._shape)
 
     @property
@@ -186,18 +186,18 @@ class NDArray:
 
     ### Basic array manipulation
     def fill(self, value):
-        """ Fill (in place) with a constant value. """
+        """Fill (in place) with a constant value."""
         self._device.fill(self._handle, value)
 
     def to(self, device):
-        """ Convert between devices, using to/from numpy calls as the unifying bridge. """
+        """Convert between devices, using to/from numpy calls as the unifying bridge."""
         if device == self.device:
             return self
         else:
             return NDArray(self.numpy(), device=device)
 
     def numpy(self):
-        """ convert to a numpy array """
+        """convert to a numpy array"""
         return self.device.to_numpy(
             self._handle, self.shape, self.strides, self._offset
         )
@@ -211,7 +211,7 @@ class NDArray:
         )
 
     def compact(self):
-        """ Convert a matrix to be compact """
+        """Convert a matrix to be compact"""
         if self.is_compact():
             return self
         else:
@@ -222,7 +222,7 @@ class NDArray:
             return out
 
     def as_strided(self, shape, strides):
-        """ Restride the matrix without copying memory. """
+        """Restride the matrix without copying memory."""
         assert len(shape) == len(strides)
         return NDArray.make(
             shape, strides=strides, device=self.device, handle=self._handle
@@ -315,7 +315,7 @@ class NDArray:
             point to the same memory as the original array.
         """
         ### BEGIN YOUR SOLUTION
-        if (len(new_shape) == len(self.shape)):
+        if len(new_shape) == len(self.shape):
             _strides = []
             for idx, shape in enumerate(new_shape):
                 stride = self.strides[idx] if self.shape[idx] != 1 else 0
@@ -330,7 +330,7 @@ class NDArray:
     ### Get and set elements
 
     def process_slice(self, sl, dim):
-        """ Convert a slice to an explicit start/stop/step """
+        """Convert a slice to an explicit start/stop/step"""
         start, stop, step = sl.start, sl.stop, sl.step
         if start == None:
             start = 0
@@ -399,14 +399,19 @@ class NDArray:
         _offset = 0
         for i, idx in enumerate(idxs):
             start, stop, step = idx.start, idx.stop, idx.step
-            if stop > self.shape[i]: stop = self.shape[i]
-            _offset += (start * self.strides[i])
+            if stop > self.shape[i]:
+                stop = self.shape[i]
+            _offset += start * self.strides[i]
             tmp_dim = math.ceil((stop - start) / step)
             if tmp_dim > 1:
                 _shape.append(tmp_dim)
                 _strides.append(self.strides[i] * step)
         return NDArray.make(
-            tuple(_shape), strides=tuple(_strides), device=self.device, handle=self._handle, offset=_offset
+            tuple(_shape),
+            strides=tuple(_strides),
+            device=self.device,
+            handle=self._handle,
+            offset=_offset,
         )
         ### END YOUR SOLUTION
 
@@ -581,13 +586,13 @@ class NDArray:
 
     ### Reductions, i.e., sum/max over all element or over given axis
     def reduce_view_out(self, axis, keepdims=False):
-        """ Return a view to the array set up for reduction functions and output array. """
+        """Return a view to the array set up for reduction functions and output array."""
         if isinstance(axis, tuple) and not axis:
             raise ValueError("Empty axis in reduce")
 
         if axis is None:
             view = self.compact().reshape((1,) * (self.ndim - 1) + (prod(self.shape),))
-            #out = NDArray.make((1,) * self.ndim, device=self.device)
+            # out = NDArray.make((1,) * self.ndim, device=self.device)
             out = NDArray.make((1,), device=self.device)
 
         else:
@@ -600,8 +605,8 @@ class NDArray:
             )
             out = NDArray.make(
                 tuple([1 if i == axis else s for i, s in enumerate(self.shape)])
-                if keepdims else
-                tuple([s for i, s in enumerate(self.shape) if i != axis]),
+                if keepdims
+                else tuple([s for i, s in enumerate(self.shape) if i != axis]),
                 device=self.device,
             )
         return view, out
@@ -637,7 +642,11 @@ class NDArray:
             strides[ax] = -strides[ax]
             offset += (self.shape[ax] - 1) * self.strides[ax]
         return NDArray.make(
-            self.shape, strides=tuple(strides), device=self.device, handle=self._handle, offset=offset
+            self.shape,
+            strides=tuple(strides),
+            device=self.device,
+            handle=self._handle,
+            offset=offset,
         ).compact()
         ### END YOUR SOLUTION
 
@@ -652,16 +661,14 @@ class NDArray:
         for idx, ax in enumerate(axes):
             shape[idx] += sum(ax)
         new_array = NDArray(np.zeros(shape), device=self.device)
-        slices = tuple(
-            [slice(i, shape[idx] - j) for idx, (i, j) in enumerate(axes)]
-        )
+        slices = tuple([slice(i, shape[idx] - j) for idx, (i, j) in enumerate(axes)])
         new_array[slices] = self
         return new_array
         ### END YOUR SOLUTION
 
 
 def array(a, dtype="float32", device=None):
-    """ Convenience methods to match numpy a bit more closely."""
+    """Convenience methods to match numpy a bit more closely."""
     dtype = "float32" if dtype is None else dtype
     # assert dtype == "float32"
     return NDArray(a, device=device, dtype=dtype)

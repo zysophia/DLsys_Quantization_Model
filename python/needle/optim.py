@@ -2,6 +2,7 @@
 import needle as ndl
 import numpy as np
 
+
 class Optimizer:
     def __init__(self, params):
         self.params = params
@@ -36,7 +37,14 @@ class SGD(Optimizer):
         """
         Clips gradient norm of parameters.
         """
-        total_norm = np.linalg.norm(np.array([np.linalg.norm(p.grad.detach().numpy()).reshape((1,)) for p in self.params]))
+        total_norm = np.linalg.norm(
+            np.array(
+                [
+                    np.linalg.norm(p.grad.detach().numpy()).reshape((1,))
+                    for p in self.params
+                ]
+            )
+        )
         clip_coef = max_norm / (total_norm + 1e-6)
         clip_coef_clamped = min((np.asscalar(clip_coef), 1.0))
         for p in self.params:
@@ -73,8 +81,10 @@ class Adam(Optimizer):
                 self.m[idx] = 0
                 self.v[idx] = 0
             self.m[idx] = self.beta1 * self.m[idx] + (1 - self.beta1) * grad
-            self.v[idx] = self.beta2 * self.v[idx] + (1 - self.beta2) * (grad ** 2)
-            u_hat = self.m[idx] / (1 - self.beta1 ** self.t)
-            v_hat = self.v[idx] / (1 - self.beta2 ** self.t)
-            self.params[idx].data = p.data - self.lr * u_hat / ((v_hat ** 0.5) + self.eps)
+            self.v[idx] = self.beta2 * self.v[idx] + (1 - self.beta2) * (grad**2)
+            u_hat = self.m[idx] / (1 - self.beta1**self.t)
+            v_hat = self.v[idx] / (1 - self.beta2**self.t)
+            self.params[idx].data = p.data - self.lr * u_hat / (
+                (v_hat**0.5) + self.eps
+            )
         ### END YOUR SOLUTION

@@ -56,7 +56,7 @@ class Op:
         raise NotImplementedError()
 
     def gradient_as_tuple(self, out_grad: "Value", node: "Value") -> Tuple["Value"]:
-        """ Convenience method to always return a tuple from gradient call"""
+        """Convenience method to always return a tuple from gradient call"""
         output = self.gradient(out_grad, node)
         if isinstance(output, tuple):
             return output
@@ -67,7 +67,7 @@ class Op:
 
 
 class TensorOp(Op):
-    """ Op class specialized to output tensors, will be alterate subclasses for other structures """
+    """Op class specialized to output tensors, will be alterate subclasses for other structures"""
 
     def __call__(self, *args):
         return Tensor.make_from_op(self, args)
@@ -154,7 +154,9 @@ class Value:
         data = self.realize_cached_data()
         if array_api is numpy:
             return data
-        return data.numpy() if not isinstance(data, tuple) else [x.numpy() for x in data]
+        return (
+            data.numpy() if not isinstance(data, tuple) else [x.numpy() for x in data]
+        )
 
 
 ### Not needed in HW1
@@ -379,7 +381,9 @@ def compute_gradient_of_variables(output_tensor, out_grad):
         else:
             sum_grad = sum(node_grads)
         node.grad = sum_grad
-        input_grads = node.op.gradient_as_tuple(sum_grad, node) if node.op else (Tensor(1),)
+        input_grads = (
+            node.op.gradient_as_tuple(sum_grad, node) if node.op else (Tensor(1),)
+        )
         for i in range(len(node.inputs)):
             if node.inputs[i] in node_to_output_grads_list:
                 node_to_output_grads_list[node.inputs[i]].append(input_grads[i])

@@ -50,11 +50,12 @@ class RandomCrop(Transform):
         ### BEGIN YOUR SOLUTION
         h, w, c = img.shape
         new_im = np.zeros([h + self.padding * 2, w + self.padding * 2, c])
-        new_im[self.padding: self.padding + h,
-            self.padding: self.padding + w, :] = img
+        new_im[
+            self.padding : self.padding + h, self.padding : self.padding + w, :
+        ] = img
         coord_x = self.padding + shift_x
         coord_y = self.padding + shift_y
-        return new_im[coord_x: coord_x + h, coord_y: coord_y + w, :]
+        return new_im[coord_x : coord_x + h, coord_y : coord_y + w, :]
         ### END YOUR SOLUTION
 
 
@@ -111,16 +112,17 @@ class DataLoader:
             self.ordering = np.array_split(
                 np.arange(len(dataset)), range(batch_size, len(dataset), batch_size)
             )
+        self.len = len(self.dataset) // self.batch_size
 
     def __iter__(self):
         ### BEGIN YOUR SOLUTION
         self.idx = 0
-        self.len = len(self.dataset) // self.batch_size
         if self.shuffle:
             tmp_range = np.arange(len(self.dataset))
             np.random.shuffle(tmp_range)
-            self.ordering = np.array_split(tmp_range,
-                range(self.batch_size, len(self.dataset), self.batch_size))
+            self.ordering = np.array_split(
+                tmp_range, range(self.batch_size, len(self.dataset), self.batch_size)
+            )
         ### END YOUR SOLUTION
         return self
 
@@ -134,6 +136,9 @@ class DataLoader:
             raise StopIteration
         ### END YOUR SOLUTION
 
+    def __len__(self):
+        return self.len
+
 
 class MNISTDataset(Dataset):
     def __init__(
@@ -144,13 +149,16 @@ class MNISTDataset(Dataset):
     ):
         ### BEGIN YOUR SOLUTION
         import gzip, struct
+
         with gzip.open(image_filename) as f:
-            _, num, ros, cols = struct.unpack('>4I', f.read(16))
-            self.images = np.frombuffer(f.read(), dtype=np.uint8).reshape(num, 28*28)
+            _, num, ros, cols = struct.unpack(">4I", f.read(16))
+            self.images = np.frombuffer(f.read(), dtype=np.uint8).reshape(num, 28 * 28)
         with gzip.open(label_filename) as f:
-            _, num = struct.unpack('>2I', f.read(8))
+            _, num = struct.unpack(">2I", f.read(8))
             self.labels = np.frombuffer(f.read(), dtype=np.uint8)
-        self.images = (self.images - self.images.min()) / (self.images.max() - self.images.min())
+        self.images = (self.images - self.images.min()) / (
+            self.images.max() - self.images.min()
+        )
         self.images = self.images.astype(np.float32)
         assert self.images.shape[0] == self.labels.shape[0] == num
 
@@ -205,7 +213,7 @@ class CIFAR10Dataset(Dataset):
         base_folder: str,
         train: bool,
         p: Optional[int] = 0.5,
-        transforms: Optional[List] = None
+        transforms: Optional[List] = None,
     ):
         """
         Parameters:
@@ -230,8 +238,8 @@ class CIFAR10Dataset(Dataset):
         self.targets = []
         for file_name, checksum in file_list:
             file_path = os.path.join(self.base_folder, file_name)
-            with open(file_path, 'rb') as f:
-                entry = pickle.load(f, encoding='latin1')
+            with open(file_path, "rb") as f:
+                entry = pickle.load(f, encoding="latin1")
                 self.data.append(entry["data"])
                 if "labels" in entry:
                     self.targets.extend(entry["labels"])
@@ -249,7 +257,7 @@ class CIFAR10Dataset(Dataset):
         """
         ### BEGIN YOUR SOLUTION
         img, target = self.data[index], self.targets[index]
-        img = (img - img.min()) / (img.max() - img.min()) # norm
+        img = (img - img.min()) / (img.max() - img.min())  # norm
 
         if self.transforms is not None:
             img = self.transforms(img)
@@ -277,10 +285,6 @@ class NDArrayDataset(Dataset):
         return tuple([a[i] for a in self.arrays])
 
 
-
-
-
-
 class Dictionary(object):
     """
     Creates a dictionary from a list of words, mapping each word to a
@@ -290,6 +294,7 @@ class Dictionary(object):
     idx2word: list of words in the dictionary, in the order they were added
         to the dictionary (i.e. each word only appears once in this list)
     """
+
     def __init__(self):
         self.word2idx = {}
         self.idx2word = []
@@ -318,15 +323,15 @@ class Dictionary(object):
         ### END YOUR SOLUTION
 
 
-
 class Corpus(object):
     """
     Creates corpus from train, and test txt files.
     """
+
     def __init__(self, base_dir, max_lines=None):
         self.dictionary = Dictionary()
-        self.train = self.tokenize(os.path.join(base_dir, 'train.txt'), max_lines)
-        self.test = self.tokenize(os.path.join(base_dir, 'test.txt'), max_lines)
+        self.train = self.tokenize(os.path.join(base_dir, "train.txt"), max_lines)
+        self.test = self.tokenize(os.path.join(base_dir, "test.txt"), max_lines)
 
     def tokenize(self, path, max_lines=None):
         """

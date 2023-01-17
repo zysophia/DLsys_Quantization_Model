@@ -1,9 +1,11 @@
 import sys
-sys.path.append('./python')
+
+sys.path.append("./python")
 import needle as ndl
 import needle.nn as nn
 import math
 import numpy as np
+
 np.random.seed(0)
 
 
@@ -16,7 +18,7 @@ class ResNet9(ndl.nn.Module):
         self.res1 = nn.Residual(
             nn.Sequential(
                 nn.ConvBatchNormReLU(32, 32, 3, 1, device=device, dtype=dtype),
-                nn.ConvBatchNormReLU(32, 32, 3, 1, device=device, dtype=dtype)
+                nn.ConvBatchNormReLU(32, 32, 3, 1, device=device, dtype=dtype),
             )
         )
         self.block3 = nn.ConvBatchNormReLU(32, 64, 3, 2, device=device, dtype=dtype)
@@ -53,6 +55,10 @@ if __name__ == "__main__":
     model = ResNet9()
     x = ndl.ops.randu((1, 32, 32, 3), requires_grad=True)
     model(x)
-    cifar10_train_dataset = ndl.data.CIFAR10Dataset("data/cifar-10-batches-py", train=True)
-    train_loader = ndl.data.DataLoader(cifar10_train_dataset, 128, ndl.cpu(), dtype="float32")
+    cifar10_train_dataset = ndl.data.CIFAR10Dataset(
+        "data/cifar-10-batches-py", train=True
+    )
+    train_loader = ndl.data.DataLoader(
+        cifar10_train_dataset, 128, ndl.cpu(), dtype="float32"
+    )
     print(dataset[1][0].shape)

@@ -1,28 +1,31 @@
 import os
-from typing_extensions import ParamSpecKwargs
+import pickle
 import needle as ndl
 import needle.nn as nn
 from needle.autograd import Tensor
-from collections.abc import Mapping
-import pickle
-import numpy as np
 
 
 def save_model(model: nn.Module, file_path: str):
     named_paras = model.named_parameters()
     for k, v in named_paras.items():
         named_paras[k] = v.numpy()
-    with open (file_path, 'wb') as f:
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as f:
         pickle.dump(named_paras, f, pickle.HIGHEST_PROTOCOL)
     f.close()
 
 
-def load_model(model: nn.Module, file_path: str):
-    with open (file_path, 'rb') as f:
+def load_model(model: nn.Module, file_path: str, map_location="cpu"):
+    """map_location should be one of 'cpu', 'gpu'"""
+    if map_location == "cpu":
+        device = ndl.cpu()
+    else:
+        device = ndl.gpu()
+    with open(file_path, "rb") as f:
         named_paras = pickle.load(f)
     f.close()
     for k, v in named_paras.items():
-        named_paras[k] = nn.Parameter(v)
+        named_paras[k] = nn.Parameter(v, device=device)
     return load_named_params(model, named_paras)
 
 
@@ -43,10 +46,10 @@ def load_named_param(model: nn.Module, name, param):
 
 
 def update_param(name: str, param: Tensor, d: object):
-    keys = name.split('.', 1)
+    keys = name.split(".", 1)
     curk = keys[0]
     if curk.isdigit():
-        curk = int(curk) 
+        curk = int(curk)
     if isinstance(d, nn.Module):
         return load_named_param(d, name, param)
     elif isinstance(d, tuple):
@@ -64,4 +67,3 @@ def update_param(name: str, param: Tensor, d: object):
         else:
             d[curk] = param
     return d
-

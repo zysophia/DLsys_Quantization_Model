@@ -12,10 +12,12 @@ class Parameter(Tensor):
     """A special kind of tensor that represents parameters."""
 
 
-def _unpack_named_params(value: object, name: str, state_dict: OrderedDict) -> OrderedDict:
+def _unpack_named_params(
+    value: object, name: str, state_dict: OrderedDict
+) -> OrderedDict:
     if isinstance(value, dict):
         for k, v in value.items():
-            _name = name + "." + k if name != ""  else k
+            _name = name + "." + k if name != "" else k
             _unpack_named_params(v, _name, state_dict)
     elif isinstance(value, (list, tuple)):
         for index, v in enumerate(value):
@@ -112,8 +114,22 @@ class Linear(Module):
         self.out_features = out_features
 
         ### BEGIN YOUR SOLUTION
-        self.weight = Parameter(init.kaiming_uniform(self.in_features, self.out_features, device=device, dtype=dtype))
-        self.bias = Parameter(ops.transpose(init.kaiming_uniform(self.out_features, 1, device=device, dtype=dtype))) if bias else None
+        self.weight = Parameter(
+            init.kaiming_uniform(
+                self.in_features, self.out_features, device=device, dtype=dtype
+            )
+        )
+        self.bias = (
+            Parameter(
+                ops.transpose(
+                    init.kaiming_uniform(
+                        self.out_features, 1, device=device, dtype=dtype
+                    )
+                )
+            )
+            if bias
+            else None
+        )
         ### END YOUR SOLUTION
 
     def forward(self, X: Tensor) -> Tensor:
@@ -183,9 +199,12 @@ class SoftmaxLoss(Module):
         ### BEGIN YOUR SOLUTION
         num, classes = logits.shape
         y_one_hot = init.one_hot(classes, y, device=y.device)
-        loss = (ops.log(ops.exp(logits)) - ops.broadcast_to(
-                ops.reshape(ops.logsumexp(logits, 1), (num, 1)),
-            logits.shape)) * y_one_hot
+        loss = (
+            ops.log(ops.exp(logits))
+            - ops.broadcast_to(
+                ops.reshape(ops.logsumexp(logits, 1), (num, 1)), logits.shape
+            )
+        ) * y_one_hot
         loss = ops.divide_scalar(loss, -num)
         loss = ops.summation(loss)
         return loss
@@ -210,21 +229,25 @@ class BatchNorm1d(Module):
         batch = x.shape[0]
         if self.training:
             mean = ops.summation(x, 0) / batch
-            self.running_mean = self.momentum * mean + \
-                (1 - self.momentum) * self.running_mean
+            self.running_mean = (
+                self.momentum * mean + (1 - self.momentum) * self.running_mean
+            )
             mean = ops.broadcast_to(ops.reshape(mean, (1, self.dim)), x.shape)
 
             std = ops.summation(ops.power_scalar(x - mean, 2), 0) / batch
-            self.running_var = self.momentum * std + \
-                (1 - self.momentum) * self.running_var
+            self.running_var = (
+                self.momentum * std + (1 - self.momentum) * self.running_var
+            )
             std = ops.broadcast_to(ops.reshape(std, (1, self.dim)), x.shape)
 
-            x = (x - mean) / ops.power_scalar(std + self.eps, 0.5) * \
-                ops.broadcast_to(ops.reshape(self.weight, (1, self.dim)), x.shape) \
-                + ops.broadcast_to(ops.reshape(self.bias, (1, self.dim)), x.shape)
+            x = (x - mean) / ops.power_scalar(std + self.eps, 0.5) * ops.broadcast_to(
+                ops.reshape(self.weight, (1, self.dim)), x.shape
+            ) + ops.broadcast_to(ops.reshape(self.bias, (1, self.dim)), x.shape)
             return x
         else:
-            x = (x - self.running_mean) / ((self.running_var + self.eps) ** 0.5)
+            x = (x - ops.broadcast_to(self.running_mean, x.shape)) / ops.broadcast_to(
+                (self.running_var + self.eps) ** 0.5, x.shape
+            )
             return x
         ### END YOUR SOLUTION
 
@@ -238,7 +261,7 @@ class BatchNorm2d(BatchNorm1d):
         s = x.shape
         _x = x.transpose((1, 2)).transpose((2, 3)).reshape((s[0] * s[2] * s[3], s[1]))
         y = super().forward(_x).reshape((s[0], s[2], s[3], s[1]))
-        return y.transpose((2,3)).transpose((1,2))
+        return y.transpose((2, 3)).transpose((1, 2))
 
 
 class LayerNorm1d(Module):
@@ -255,15 +278,17 @@ class LayerNorm1d(Module):
         ### BEGIN YOUR SOLUTION
         batch = x.shape[0]
         mean = ops.broadcast_to(
-            ops.reshape(ops.summation(x, 1) / self.dim, (batch, 1)),
-            x.shape)
-        std = ops.broadcast_to(ops.reshape(
-            ops.summation(
-                ops.power_scalar(x - mean, 2), 1
-            ) / self.dim, (batch, 1)), x.shape)
-        x = (x - mean) / ops.power_scalar(std + self.eps, 0.5) * \
-            ops.broadcast_to(ops.reshape(self.weight, (1, self.dim)), x.shape) + \
-            ops.broadcast_to(ops.reshape(self.bias, (1, self.dim)), x.shape)
+            ops.reshape(ops.summation(x, 1) / self.dim, (batch, 1)), x.shape
+        )
+        std = ops.broadcast_to(
+            ops.reshape(
+                ops.summation(ops.power_scalar(x - mean, 2), 1) / self.dim, (batch, 1)
+            ),
+            x.shape,
+        )
+        x = (x - mean) / ops.power_scalar(std + self.eps, 0.5) * ops.broadcast_to(
+            ops.reshape(self.weight, (1, self.dim)), x.shape
+        ) + ops.broadcast_to(ops.reshape(self.bias, (1, self.dim)), x.shape)
         return x
         ### END YOUR SOLUTION
 
@@ -277,7 +302,7 @@ class Dropout(Module):
         ### BEGIN YOUR SOLUTION
         if self.training and self.p > 0.0:
             shape = x.shape
-            mask = init.randb(*shape, p=(1-self.p), dtype='float32', device=x.device)
+            mask = init.randb(*shape, p=(1 - self.p), dtype="float32", device=x.device)
             x = ops.mul_scalar(ops.multiply(mask, x), 1 / (1 - self.p))
         return x
         ### END YOUR SOLUTION
@@ -295,9 +320,20 @@ class Residual(Module):
 
 
 class ConvBatchNormReLU(Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True, device=None, dtype="float32"):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        bias=True,
+        device=None,
+        dtype="float32",
+    ):
         super().__init__()
-        self.conv = Conv(in_channels, out_channels, kernel_size, stride, bias, device, dtype)
+        self.conv = Conv(
+            in_channels, out_channels, kernel_size, stride, bias, device, dtype
+        )
         self.bn = BatchNorm2d(out_channels, device=device, dtype=dtype)
         self.relu = ReLU()
 
@@ -313,7 +349,17 @@ class Conv(Module):
     No grouped convolution or dilation
     Only supports square kernels
     """
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True, device=None, dtype="float32"):
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        bias=True,
+        device=None,
+        dtype="float32",
+    ):
         super().__init__()
         if isinstance(kernel_size, tuple):
             kernel_size = kernel_size[0]
@@ -334,35 +380,26 @@ class Conv(Module):
                 kernel_size * kernel_size * out_channels,
                 shape=[kernel_size, kernel_size, in_channels, out_channels],
                 dtype=dtype,
-                device=device
+                device=device,
             )
         )
         self.bias = None
         if bias:
-            prob = 1.0 / (in_channels * kernel_size ** 2) ** 0.5
+            prob = 1.0 / (in_channels * kernel_size**2) ** 0.5
             self.bias = Parameter(
                 init.rand(
-                    out_channels,
-                    low=-prob,
-                    high=prob,
-                    device=device,
-                    dtype=dtype
+                    out_channels, low=-prob, high=prob, device=device, dtype=dtype
                 )
             )
         ### END YOUR SOLUTION
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        x = ops.transpose(
-            ops.transpose(x),
-            (1, 3)
-        ) # NCHW -> NCWH -> NHWC
+        x = ops.transpose(ops.transpose(x), (1, 3))  # NCHW -> NCWH -> NHWC
         x = ops.conv(x, self.weight, stride=self.stride, padding=self.padding)
         if self.bias is not None:
             x = x + ops.broadcast_to(self.bias, x.shape)
-        x = ops.transpose(
-            ops.transpose(x, (1,3))
-        ) # NHWC -> NCWH -> NCHW
+        x = ops.transpose(ops.transpose(x, (1, 3)))  # NHWC -> NCWH -> NCHW
         return x
         ### END YOUR SOLUTION
 
@@ -375,22 +412,16 @@ class FuseConv(Conv):
         self.act = ReLU()
 
     def forward(self, x: Tensor) -> Tensor:
-        x = ops.transpose(
-            ops.transpose(x),
-            (1, 3)
-        ) # NCHW -> NCWH -> NHWC
+        x = ops.transpose(ops.transpose(x), (1, 3))  # NCHW -> NCWH -> NHWC
         x = ops.conv(x, self.weight, stride=self.stride, padding=self.padding)
         if self.bias is not None:
             x = x + ops.broadcast_to(self.bias, x.shape)
-        x = ops.transpose(
-            ops.transpose(x, (1,3))
-        ) # NHWC -> NCWH -> NCHW
+        x = ops.transpose(ops.transpose(x, (1, 3)))  # NHWC -> NCWH -> NCHW
         x = self.act(x)
         return x
 
 
 class QConv(Module):
-
     def __init__(self, quant_weight, scales, stride=1, bias=None, device=None):
         super().__init__()
         self.in_channels = quant_weight.shape[2]
@@ -408,22 +439,25 @@ class QConv(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        x = ops.transpose(
-            ops.transpose(x),
-            (1, 3)
-        ) # NCHW -> NCWH -> NHWC
+        x = ops.transpose(ops.transpose(x), (1, 3))  # NCHW -> NCWH -> NHWC
         x = ops.conv(x, self.weight, stride=self.stride, padding=self.padding)
         if self.bias is not None:
             x = x + ops.broadcast_to(self.bias, x.shape)
-        x = ops.transpose(
-            ops.transpose(x, (1,3))
-        ) # NHWC -> NCWH -> NCHW
+        x = ops.transpose(ops.transpose(x, (1, 3)))  # NHWC -> NCWH -> NCHW
         return x
         ### END YOUR SOLUTION
 
 
 class RNNCell(Module):
-    def __init__(self, input_size, hidden_size, bias=True, nonlinearity='tanh', device=None, dtype="float32"):
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        bias=True,
+        nonlinearity="tanh",
+        device=None,
+        dtype="float32",
+    ):
         """
         Applies an RNN cell with tanh or ReLU nonlinearity.
 
@@ -444,20 +478,15 @@ class RNNCell(Module):
         super().__init__()
         ### BEGIN YOUR SOLUTION
         k = (1 / hidden_size) ** 0.5
-        assert nonlinearity in ['relu', 'tanh']
+        assert nonlinearity in ["relu", "tanh"]
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.device = device
         self.dtype = dtype
-        self.activate = ReLU() if nonlinearity == 'relu' else Tanh()
+        self.activate = ReLU() if nonlinearity == "relu" else Tanh()
         self.W_ih = Parameter(
             init.rand(
-                input_size,
-                hidden_size,
-                low=-k,
-                high=k,
-                device=device,
-                dtype=dtype
+                input_size, hidden_size, low=-k, high=k, device=device, dtype=dtype
             )
         )
         self.W_hh = Parameter(
@@ -481,13 +510,7 @@ class RNNCell(Module):
                 )
             )
             self.bias_hh = Parameter(
-                init.rand(
-                    hidden_size,
-                    low=-k,
-                    high=k,
-                    device=device,
-                    dtype=dtype
-                )
+                init.rand(hidden_size, low=-k, high=k, device=device, dtype=dtype)
             )
         else:
             self.bias_ih, self.bias_hh = None, None
@@ -507,12 +530,7 @@ class RNNCell(Module):
         ### BEGIN YOUR SOLUTION
         if h is None:
             bs = X.shape[0]
-            h = init.zeros(
-                bs,
-                self.hidden_size,
-                device=self.device,
-                dtype=self.dtype
-            )
+            h = init.zeros(bs, self.hidden_size, device=self.device, dtype=self.dtype)
         h1 = X @ self.W_ih + h @ self.W_hh
         if self.bias_ih is not None:
             h1 = h1 + ops.broadcast_to(self.bias_ih, h1.shape)
@@ -524,7 +542,16 @@ class RNNCell(Module):
 
 
 class RNN(Module):
-    def __init__(self, input_size, hidden_size, num_layers=1, bias=True, nonlinearity='tanh', device=None, dtype="float32"):
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        num_layers=1,
+        bias=True,
+        nonlinearity="tanh",
+        device=None,
+        dtype="float32",
+    ):
         """
         Applies a multi-layer RNN with tanh or ReLU non-linearity to an input sequence.
 
@@ -563,7 +590,7 @@ class RNN(Module):
                     bias=bias,
                     nonlinearity=nonlinearity,
                     device=device,
-                    dtype=dtype
+                    dtype=dtype,
                 )
             else:
                 cell = RNNCell(
@@ -572,7 +599,7 @@ class RNN(Module):
                     bias=bias,
                     nonlinearity=nonlinearity,
                     device=device,
-                    dtype=dtype
+                    dtype=dtype,
                 )
             self.rnn_cells.append(cell)
         ### END YOUR SOLUTION
@@ -597,12 +624,12 @@ class RNN(Module):
                 bs,
                 self.hidden_size,
                 device=self.device,
-                dtype=self.dtype
+                dtype=self.dtype,
             )
 
         outputs = []
-        X_split = ops.split(X, 0) # seq_len of [bs, input_size]
-        h_split = list(ops.split(h0, 0)) # num_layer of [bs, hidden_size]
+        X_split = ops.split(X, 0)  # seq_len of [bs, input_size]
+        h_split = list(ops.split(h0, 0))  # num_layer of [bs, hidden_size]
         for xi in X_split:
             for j, cell in enumerate(self.rnn_cells):
                 hi = h_split[j]
@@ -615,4 +642,3 @@ class RNN(Module):
 
         return outputs, h0
         ### END YOUR SOLUTION
-

@@ -14,12 +14,16 @@ def _run_fuse_conv_bn_relu(module):
         conv.stride,
         conv.bias,
         conv.device,
-        conv.dtype
+        conv.dtype,
     )
 
-    w_conv = conv.weight.detach().\
-        transpose((0,3)).transpose((1,2)).transpose((0,1)).\
-            reshape((conv.out_channels, -1))
+    w_conv = (
+        conv.weight.detach()
+        .transpose((0, 3))
+        .transpose((1, 2))
+        .transpose((0, 1))
+        .reshape((conv.out_channels, -1))
+    )
     w_bn = ndl.diag(bn.weight / ndl.sqrt(bn.eps + bn.running_var))
 
     fused_weight = ndl.matmul(w_bn, w_conv)
@@ -30,7 +34,7 @@ def _run_fuse_conv_bn_relu(module):
         fused.weight.shape[1],
     ]
     fused_weight = fused_weight.reshape(tmp_shape)
-    fused.weight.cached_data = fused_weight.realize_cached_data().permute((2,3,1,0))
+    fused.weight.cached_data = fused_weight.realize_cached_data().permute((2, 3, 1, 0))
 
     if conv.bias is not None:
         b_conv = conv.bias
