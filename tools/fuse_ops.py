@@ -1,5 +1,6 @@
 import needle as ndl
 import needle.nn as nn
+import needle.ops as ops
 
 
 def _run_fuse_conv_bn_relu(module):
@@ -17,24 +18,23 @@ def _run_fuse_conv_bn_relu(module):
         conv.dtype,
     )
 
-    w_conv = (
-        conv.weight.detach()
-        .transpose((0, 3))
-        .transpose((1, 2))
-        .transpose((0, 1))
-        .reshape((conv.out_channels, -1))
+    w_conv = ndl.Tensor(
+        conv.weight.cached_data.permute((3, 2, 0, 1))
+        .compact()
+        .reshape((conv.out_channels, -1)),
+        device=conv.device,
     )
     w_bn = ndl.diag(bn.weight / ndl.sqrt(bn.eps + bn.running_var))
 
-    fused_weight = ndl.matmul(w_bn, w_conv)
-    tmp_shape = [
-        fused.weight.shape[3],
-        fused.weight.shape[2],
-        fused.weight.shape[0],
-        fused.weight.shape[1],
-    ]
-    fused_weight = fused_weight.reshape(tmp_shape)
-    fused.weight.cached_data = fused_weight.realize_cached_data().permute((2, 3, 1, 0))
+    ts = fused.weight.shape
+    shape = [ts[3], ts[2], ts[0], ts[1]]
+    fused.weight.cached_data = (
+        ndl.matmul(w_bn, w_conv)
+        .realize_cached_data()
+        .reshape(shape)
+        .compact()
+        .permute((2, 3, 1, 0))
+    )
 
     if conv.bias is not None:
         b_conv = conv.bias
@@ -42,8 +42,7 @@ def _run_fuse_conv_bn_relu(module):
         b_conv = ops.zeros(conv.weight.shape[3], device=ndl.cpu())
     b_conv = ndl.matmul(w_bn, b_conv.reshape((-1, 1))).reshape(-1)
     b_bn = bn.bias - bn.weight * bn.running_mean / ndl.sqrt(bn.running_var + bn.eps)
-    fused_b = b_conv + b_bn
-    fused.bias.cached_data = fused_b.realize_cached_data()
+    fused.bias.cached_data = (b_conv + b_bn).realize_cached_data()
 
     return fused
 

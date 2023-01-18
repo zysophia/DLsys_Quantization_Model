@@ -13,10 +13,12 @@ dtype = "float32"
 
 def test_single():
     model = nn.ConvBatchNormReLU(3, 16, 3, 3, device=device, dtype=dtype)
+    model.eval()
     inputs = ndl.Tensor(np.random.randn(1, 3, 32, 32), device=device)
     ori_out = model(inputs)
 
     fuse_model = fuse_conv_bn_relu(model)
+    fuse_model.eval()
     fuse_out = fuse_model(inputs)
 
     diff = np.linalg.norm(ori_out.numpy() - fuse_out.numpy())
@@ -29,9 +31,11 @@ def test_model():
         nn.ConvBatchNormReLU(16, 32, 3, 3, device=device, dtype=dtype),
     )
     inputs = ndl.Tensor(np.random.randn(1, 3, 32, 32), device=device)
+    model.eval()
     ori_out = model(inputs)
 
     fuse_model = fuse_conv_bn_relu(model)
+    fuse_model.eval()
     fuse_out = fuse_model(inputs)
 
     diff = np.linalg.norm(ori_out.numpy() - fuse_out.numpy())

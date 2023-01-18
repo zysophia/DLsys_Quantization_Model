@@ -245,8 +245,12 @@ class BatchNorm1d(Module):
             ) + ops.broadcast_to(ops.reshape(self.bias, (1, self.dim)), x.shape)
             return x
         else:
-            x = (x - ops.broadcast_to(self.running_mean, x.shape)) / ops.broadcast_to(
-                (self.running_var + self.eps) ** 0.5, x.shape
+            x = (x - ops.broadcast_to(self.running_mean, x.shape)) / ops.power_scalar(
+                ops.broadcast_to(self.running_var, x.shape) + self.eps, 0.5
+            ) * ops.broadcast_to(
+                ops.reshape(self.weight, (1, self.dim)), x.shape
+            ) + ops.broadcast_to(
+                ops.reshape(self.bias, (1, self.dim)), x.shape
             )
             return x
         ### END YOUR SOLUTION
@@ -412,11 +416,7 @@ class FuseConv(Conv):
         self.act = ReLU()
 
     def forward(self, x: Tensor) -> Tensor:
-        x = ops.transpose(ops.transpose(x), (1, 3))  # NCHW -> NCWH -> NHWC
-        x = ops.conv(x, self.weight, stride=self.stride, padding=self.padding)
-        if self.bias is not None:
-            x = x + ops.broadcast_to(self.bias, x.shape)
-        x = ops.transpose(ops.transpose(x, (1, 3)))  # NHWC -> NCWH -> NCHW
+        x = super().forward(x)
         x = self.act(x)
         return x
 
