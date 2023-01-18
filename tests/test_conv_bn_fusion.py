@@ -5,7 +5,7 @@ sys.path.append("tools")
 import needle as ndl
 import needle.nn as nn
 import numpy as np
-from fuse_ops import fuse_conv_bn_relu
+from utils import fuse_conv_bn_relu
 
 device = ndl.cpu()
 dtype = "float32"

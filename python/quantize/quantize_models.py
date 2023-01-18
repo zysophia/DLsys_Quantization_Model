@@ -1,7 +1,7 @@
 import needle
 import needle.nn as nn
-from tools.quantize_weights import quantize_conv
-from .fuse_ops import fuse_conv_bn_relu
+from .quantize_weights import quantize_conv
+from utils import fuse_conv_bn_relu
 
 
 def _quant_model(model):

@@ -14,7 +14,7 @@ import needle as ndl
 import needle.nn as nn
 
 from simple_training import *
-from model_utils import *
+from utils import *
 
 
 if __name__ == "__main__":

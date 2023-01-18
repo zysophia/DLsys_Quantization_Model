@@ -7,7 +7,7 @@ import argparse
 import needle as ndl
 from apps.models import ResNet9
 from utils import save_model
-from tools import quant_model
+from quantize import quant_model
 
 
 def parse_args():
